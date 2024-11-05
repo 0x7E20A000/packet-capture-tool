@@ -7,6 +7,7 @@ import threading
 import time
 from .packet_analyzer import PacketAnalyzer
 from .logger import PacketLogger
+from .exporter import PacketExporter
 
 # 컬러 출력 초기화
 init()
@@ -28,6 +29,7 @@ class PacketCapture:
         self.bytes_per_second: float = 0
         self.analyzer = PacketAnalyzer()  # PacketAnalyzer 인스턴스 추가
         self.logger = PacketLogger()
+        self.exporter = PacketExporter()
     
     def packet_callback(self, packet) -> None:
         """패킷 캡처 콜백"""
@@ -215,5 +217,14 @@ class PacketCapture:
     def show_capture_summary(self) -> None:
         """캡처 요약 정보 표시"""
         print(f"\n{Fore.CYAN}=== 캡처 요약 ==={Style.RESET_ALL}")
-        print(f"총 캡처된 패킷: {self.packet_count}")
+        print(f"��� 캡처된 패킷: {self.packet_count}")
+    
+    def export_data(self, format: str = 'csv', filters: Optional[Dict] = None) -> str:
+        """캡처된 패킷 데이터 내보내기"""
+        if format.lower() == 'csv':
+            return self.exporter.export_csv(self.packets, filters=filters)
+        elif format.lower() == 'json':
+            return self.exporter.export_json(self.packets, filters=filters)
+        else:
+            raise ValueError(f"지원하지 않는 형식: {format}")
     
