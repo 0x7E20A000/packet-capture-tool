@@ -92,60 +92,34 @@ class PacketAnalyzer:
         }
     
     def analyze_packet(self, packet: IP, timestamp: datetime) -> Dict[str, Any]:
-        """패킷 분석"""
-        analysis = {
-            'timestamp': self.format_timestamp(timestamp),
-            'ip_header': self.parse_ip_header(packet),
-            'protocol': self.identify_protocol(packet),
-            'size': self.calculate_packet_size(packet)
-        }
-        
-        # 패킷 카운터 업데이트
-        self.packet_counter.increment(
-            protocol=analysis['protocol'],
-            size=analysis['size']['total_size']
-        )
-        
-        if TCP in packet:
-            tcp_packet = packet[TCP]
-            src_port = tcp_packet.sport
-            dst_port = tcp_packet.dport
-            analysis['tcp'] = {
-                'ports': self.analyze_tcp_ports(tcp_packet),
-                'flags': self.analyze_tcp_flags(tcp_packet),
-                'session': self.analyze_tcp_session(
-                    tcp_packet, 
-                    packet[IP].src, 
-                    packet[IP].dst
-                )
-            }
-        elif UDP in packet:
-            udp_packet = packet[UDP]
-            src_port = udp_packet.sport
-            dst_port = udp_packet.dport
-            analysis['udp'] = {
-                'ports': self.analyze_udp_ports(udp_packet)
-            }
-        elif ICMP in packet:
-            analysis['icmp'] = {
-                'type_info': self.analyze_icmp_type(packet[ICMP]),
-                'classification': self.classify_icmp_message(packet[ICMP])
+        """패킷 분석 수행"""
+        try:
+            analysis = {
+                'timestamp': self.format_timestamp(timestamp),
+                'ip_header': self.parse_ip_header(packet),
+                'protocol': self.identify_protocol(packet),
+                'size': self.calculate_packet_size(packet)
             }
             
-        self.protocol_distribution.update(
-            protocol=analysis['protocol'],
-            size=analysis['size']['total_size'],
-            src_port=src_port,
-            dst_port=dst_port
-        )
-        
-        # 패킷 레이트 업데이트
-        self.rate_monitor.update(analysis['size']['total_size'])
-        
-        # 대역폭 업데이트
-        self.bandwidth_monitor.update(analysis['size']['total_size'])
-        
-        return analysis
+            if TCP in packet:
+                tcp_packet = packet[TCP]
+                analysis['tcp'] = {
+                    'ports': self.analyze_tcp_ports(tcp_packet),
+                    'flags': self.analyze_tcp_flags(tcp_packet),
+                    'session': self.analyze_tcp_session(tcp_packet, packet[IP].src, packet[IP].dst)
+                }
+            elif UDP in packet:
+                udp_packet = packet[UDP]
+                analysis['udp'] = {
+                    'ports': self.analyze_udp_ports(udp_packet)
+                }
+            elif ICMP in packet:
+                icmp_packet = packet[ICMP]
+                analysis['icmp'] = self.analyze_icmp(icmp_packet)
+            
+            return analysis
+        except Exception as e:
+            raise Exception(f"패킷 분석 중 오류 발생: {str(e)}")
     
     @staticmethod
     def print_packet_analysis(analysis: Dict[str, Any]) -> None:
@@ -357,8 +331,7 @@ class PacketAnalyzer:
             }
         }
         
-        return error_actions.get(icmp_type, {}).get(icmp_code, "네트워크 관리자에게 문의")
-    
+        return error_actions.get(icmp_type, {}).get(icmp_code, "네트워크 관리자에게 문의")    
     def analyze_udp_ports(self, packet: UDP) -> Dict[str, int]:
         """UDP 포트 정보 분석"""
         return {

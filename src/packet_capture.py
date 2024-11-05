@@ -88,8 +88,10 @@ class PacketCapture:
     
     def show_status(self) -> None:
         """실시간 상태 표시"""
+        elapsed = self.get_elapsed_time()
+        
         # 화면 지우기
-        print("\033[H\033[J")  # 화면 클리어
+        print("\033[H\033[J")
         
         # 기본 통계 정보
         print(f"{Fore.CYAN}=== 패킷 캡처 상태 ==={Style.RESET_ALL}")
@@ -97,27 +99,33 @@ class PacketCapture:
         print(f"초당 패킷: {self.packets_per_second:.1f} pps")
         print(f"대역폭: {self.format_bytes(self.bytes_per_second)}/s")
         
-        # 최근 캡처된 패킷 정보 (최대 10개)
+        # 최근 캡처된 패킷 정보
         print(f"\n{Fore.YELLOW}최근 캡처된 패킷:{Style.RESET_ALL}")
-        for packet in self.packets[-10:]:
-            print(
-                f"[{packet['timestamp'].strftime('%H:%M:%S.%f')[:-3]}] "
-                f"{packet['source_ip']} → {packet['dest_ip']} "
-                f"({packet['protocol']}, {self.format_bytes(packet['size'])})"
-            )
-            
-            # 프로토콜별 상세 정보
-            analysis = packet['analysis']
-            if 'tcp' in analysis:
-                tcp_info = analysis['tcp']
-                print(f"  TCP - Port: {tcp_info['ports']['src_port']} → {tcp_info['ports']['dst_port']}, "
-                      f"Flags: {tcp_info['flags']}")
-            elif 'udp' in analysis:
-                udp_info = analysis['udp']
-                print(f"  UDP - Port: {udp_info['ports']['src_port']} → {udp_info['ports']['dst_port']}")
-            elif 'icmp' in analysis:
-                icmp_info = analysis['icmp']
-                print(f"  ICMP - Type: {icmp_info['type']}, Code: {icmp_info['code']}")
+        for packet in self.packets[-10:]:  # 최근 10개 패킷만 표시
+            try:
+                analysis = packet['analysis']
+                timestamp = packet['timestamp'].strftime('%H:%M:%S.%f')[:-3]
+                
+                # 기본 패킷 정보
+                print(f"[{timestamp}] {packet['source_ip']} → {packet['dest_ip']} "
+                      f"({packet['protocol']}, {self.format_bytes(packet['size'])})")
+                
+                # 프로토콜별 상세 정보
+                if 'tcp' in analysis and 'ports' in analysis['tcp']:
+                    ports = analysis['tcp']['ports']
+                    flags = analysis['tcp'].get('flags', '')
+                    print(f"  TCP - Port: {ports.get('src_port', '?')} → {ports.get('dst_port', '?')}"
+                          f"{', Flags: ' + flags if flags else ''}")
+                elif 'udp' in analysis and 'ports' in analysis['udp']:
+                    ports = analysis['udp']['ports']
+                    print(f"  UDP - Port: {ports.get('src_port', '?')} → {ports.get('dst_port', '?')}")
+                elif 'icmp' in analysis:
+                    icmp = analysis['icmp']
+                    print(f"  ICMP - Type: {icmp.get('type', '?')}, Code: {icmp.get('code', '?')}")
+                
+            except Exception as e:
+                self.logger.debug(f"패킷 정보 표시 중 오류: {e}")
+                continue
         
         print(f"\n{Fore.GREEN}Press 'Ctrl+C' to stop capturing{Style.RESET_ALL}")
     
