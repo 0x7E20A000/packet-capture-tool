@@ -5,6 +5,7 @@ from typing import Optional, Dict, List
 from colorama import init, Fore, Style
 import threading
 import time
+from .packet_analyzer import PacketAnalyzer
 
 # 컬러 출력 초기화
 init()
@@ -42,12 +43,16 @@ class PacketCapture:
                 self.packet_count += 1
                 self.bytes_received += packet_size
                 
+                current_time = datetime.now()
+                analysis = PacketAnalyzer.analyze_packet(packet, current_time)
+                
                 packet_info = {
-                    'timestamp': datetime.now(),
-                    'source_ip': packet[IP].src,
-                    'dest_ip': packet[IP].dst,
-                    'protocol': packet[IP].proto,
-                    'size': packet_size,
+                    'timestamp': current_time,
+                    'source_ip': analysis['ip_header']['src'],
+                    'dest_ip': analysis['ip_header']['dst'],
+                    'protocol': analysis['protocol'],
+                    'size': analysis['size']['total_size'],
+                    'analysis': analysis
                 }
                 self.packets.append(packet_info)
                 
