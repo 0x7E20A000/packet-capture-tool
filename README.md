@@ -112,4 +112,27 @@ pdf_path = report_gen.generate_pdf_report(report)
 print(f"PDF 보고서가 생성되었습니다: {pdf_path}")
 ```
 
+# 인터페이스 목록 확인
+python main.py -l
+
+# macOS에서 기본 인터페이스(en0)로 캡처
+python main.py -i en0 -c 100 -v
+
+# TCP 트래픽 테스트
+curl http://example.com &
+python main.py -i en0 -c 10
+
+# UDP 트래픽 테스트
+dig @8.8.8.8 google.com &
+python main.py -i en0 -c 5
+
+# ICMP 트래픽 테스트
+ping -c 4 8.8.8.8 &
+python main.py -i en0 -c 5
+
+# 로그 확인
+tail -f logs/packet_capture_*.log
+
+# 캡처 시간 제한 테스트
+python main.py -i en0 -c 100 -t 30
 
