@@ -81,27 +81,30 @@ class PacketAnalyzer:
             'is_well_known_port': packet.sport in well_known_ports or packet.dport in well_known_ports
         }
     
-    def analyze_packet(self, packet: IP, timestamp: datetime) -> Dict[str, Any]:
+    @staticmethod
+    def analyze_packet(packet: IP, timestamp: datetime) -> Dict[str, Any]:
         analysis = {
-            'timestamp': self.format_timestamp(timestamp),
-            'ip_header': self.parse_ip_header(packet),
-            'protocol': self.identify_protocol(packet),
-            'size': self.calculate_packet_size(packet)
+            'timestamp': PacketAnalyzer.format_timestamp(timestamp),
+            'ip_header': PacketAnalyzer.parse_ip_header(packet),
+            'protocol': PacketAnalyzer.identify_protocol(packet),
+            'size': PacketAnalyzer.calculate_packet_size(packet)
         }
         
         if TCP in packet:
             tcp_packet = packet[TCP]
             analysis['tcp'] = {
-                'ports': self.analyze_tcp_ports(tcp_packet),
-                'flags': self.analyze_tcp_flags(tcp_packet),
-                'session': self.analyze_tcp_session(
+                'ports': PacketAnalyzer.analyze_tcp_ports(tcp_packet),
+                'flags': PacketAnalyzer.analyze_tcp_flags(tcp_packet),
+                'session': PacketAnalyzer.analyze_tcp_session(
                     tcp_packet, 
                     packet[IP].src, 
                     packet[IP].dst
                 )
             }
         elif UDP in packet:
-            analysis['udp'] = self.analyze_udp_packet(packet[UDP])
+            analysis['udp'] = PacketAnalyzer.analyze_udp_packet(packet[UDP])
+        elif ICMP in packet:
+            analysis['icmp'] = PacketAnalyzer.analyze_icmp_type(packet[ICMP])
         
         return analysis
     
@@ -201,5 +204,59 @@ class PacketAnalyzer:
                     'overhead_ratio': (8 / len(packet)) * 100 if len(packet) > 0 else 0,
                     'efficiency': (len(payload) / len(packet)) * 100 if len(packet) > 0 else 0
                 }
+            }
+        }
+    
+    @staticmethod
+    def analyze_icmp_type(packet: ICMP) -> Dict[str, Any]:
+        """ICMP 타입/코드 해석"""
+        # ICMP 타입 정의
+        icmp_types = {
+            0: 'Echo Reply',
+            3: 'Destination Unreachable',
+            5: 'Redirect',
+            8: 'Echo Request',
+            11: 'Time Exceeded',
+            13: 'Timestamp',
+            14: 'Timestamp Reply'
+        }
+        
+        # ICMP 코드 정의 (타입별)
+        icmp_codes = {
+            3: {  # Destination Unreachable
+                0: 'Net Unreachable',
+                1: 'Host Unreachable',
+                2: 'Protocol Unreachable',
+                3: 'Port Unreachable',
+                4: 'Fragmentation Needed',
+                5: 'Source Route Failed'
+            },
+            5: {  # Redirect
+                0: 'Redirect for Network',
+                1: 'Redirect for Host',
+                2: 'Redirect for TOS & Network',
+                3: 'Redirect for TOS & Host'
+            },
+            11: {  # Time Exceeded
+                0: 'TTL Exceeded in Transit',
+                1: 'Fragment Reassembly Time Exceeded'
+            }
+        }
+        
+        icmp_type = packet.type
+        icmp_code = packet.code
+        
+        return {
+            'type': {
+                'id': icmp_type,
+                'name': icmp_types.get(icmp_type, 'Unknown Type'),
+            },
+            'code': {
+                'id': icmp_code,
+                'description': icmp_codes.get(icmp_type, {}).get(icmp_code, 'Unknown Code')
+            },
+            'raw_data': {
+                'type_hex': hex(icmp_type),
+                'code_hex': hex(icmp_code)
             }
         }
