@@ -213,3 +213,80 @@ class PacketRateMonitor:
                 'average_bps': (sum(byte_rates) / len(byte_rates)) * 8,
                 'peak_bps': max(byte_rates + [self._current_bytes]) * 8
             }
+
+class BandwidthMonitor:
+    """대역폭 사용량 모니터링"""
+    
+    def __init__(self, interval: int = 1):
+        self._lock = threading.Lock()
+        self.interval = interval  # 측정 간격(초)
+        self.reset_monitor()
+    
+    def reset_monitor(self) -> None:
+        """모니터링 데이터 초기화"""
+        self._bandwidth_data = {
+            'current': {'bytes': 0, 'timestamp': time()},
+            'intervals': deque(maxlen=60),  # 1분간의 데이터 유지
+            'total': {
+                'bytes': 0,
+                'start_time': time(),
+                'peak_bandwidth': 0
+            }
+        }
+    
+    def update(self, packet_size: int) -> None:
+        """패킷 수신시 대역폭 업데이트"""
+        with self._lock:
+            current_time = time()
+            self._bandwidth_data['current']['bytes'] += packet_size
+            self._bandwidth_data['total']['bytes'] += packet_size
+            
+            # 측정 간격이 지나면 통계 업데이트
+            if current_time - self._bandwidth_data['current']['timestamp'] >= self.interval:
+                bandwidth = (self._bandwidth_data['current']['bytes'] * 8) / self.interval  # bits per second
+                
+                self._bandwidth_data['intervals'].append({
+                    'timestamp': current_time,
+                    'bandwidth': bandwidth
+                })
+                
+                # 최대 대역폭 업데이트
+                if bandwidth > self._bandwidth_data['total']['peak_bandwidth']:
+                    self._bandwidth_data['total']['peak_bandwidth'] = bandwidth
+                
+                # 현재 구간 초기화
+                self._bandwidth_data['current'] = {
+                    'bytes': 0,
+                    'timestamp': current_time
+                }
+    
+    def get_statistics(self) -> Dict[str, Any]:
+        """대역폭 통계 반환"""
+        with self._lock:
+            current_time = time()
+            current_interval = current_time - self._bandwidth_data['current']['timestamp']
+            
+            if current_interval > 0:
+                current_bandwidth = (self._bandwidth_data['current']['bytes'] * 8) / current_interval
+            else:
+                current_bandwidth = 0
+            
+            intervals = list(self._bandwidth_data['intervals'])
+            total_time = current_time - self._bandwidth_data['total']['start_time']
+            
+            return {
+                'current': {
+                    'bps': current_bandwidth,
+                    'mbps': current_bandwidth / 1_000_000
+                },
+                'average': {
+                    'bps': (self._bandwidth_data['total']['bytes'] * 8) / total_time if total_time > 0 else 0,
+                    'mbps': ((self._bandwidth_data['total']['bytes'] * 8) / total_time) / 1_000_000 if total_time > 0 else 0
+                },
+                'peak': {
+                    'bps': self._bandwidth_data['total']['peak_bandwidth'],
+                    'mbps': self._bandwidth_data['total']['peak_bandwidth'] / 1_000_000
+                },
+                'total_bytes': self._bandwidth_data['total']['bytes'],
+                'duration': total_time
+            }
