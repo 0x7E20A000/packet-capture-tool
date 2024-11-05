@@ -100,6 +100,8 @@ class PacketAnalyzer:
                     packet[IP].dst
                 )
             }
+        elif UDP in packet:
+            analysis['udp'] = self.analyze_udp_packet(packet[UDP])
         
         return analysis
     
@@ -168,3 +170,31 @@ class PacketAnalyzer:
     def analyze_tcp_session(self, packet: TCP, src_ip: str, dst_ip: str) -> Dict:
         """TCP 세션 분석"""
         return self.tcp_tracker.track_packet(packet, src_ip, dst_ip)
+    
+    @staticmethod
+    def analyze_udp_packet(packet: UDP) -> Dict[str, Any]:
+        """UDP 패킷 분석"""
+        well_known_ports = {
+            53: 'DNS', 67: 'DHCP Server', 68: 'DHCP Client',
+            69: 'TFTP', 123: 'NTP', 161: 'SNMP',
+            162: 'SNMP Trap', 514: 'Syslog'
+        }
+        
+        return {
+            'ports': {
+                'source': {
+                    'number': packet.sport,
+                    'service': well_known_ports.get(packet.sport, 'Unknown')
+                },
+                'destination': {
+                    'number': packet.dport,
+                    'service': well_known_ports.get(packet.dport, 'Unknown')
+                }
+            },
+            'datagram': {
+                'length': len(packet),
+                'checksum': packet.chksum,
+                'payload_size': len(packet.payload),
+                'header_size': 8  # UDP 헤더는 항상 8바이트
+            }
+        }
