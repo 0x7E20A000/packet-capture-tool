@@ -173,28 +173,33 @@ class PacketAnalyzer:
     
     @staticmethod
     def analyze_udp_packet(packet: UDP) -> Dict[str, Any]:
-        """UDP 패킷 분석"""
-        well_known_ports = {
-            53: 'DNS', 67: 'DHCP Server', 68: 'DHCP Client',
-            69: 'TFTP', 123: 'NTP', 161: 'SNMP',
-            162: 'SNMP Trap', 514: 'Syslog'
+        """UDP 패킷 전체 분석"""
+        return {
+            'ports': PacketAnalyzer.analyze_udp_ports(packet),
+            'datagram': PacketAnalyzer.analyze_udp_datagram(packet)
         }
+    
+    @staticmethod
+    def analyze_udp_datagram(packet: UDP) -> Dict[str, Any]:
+        """UDP 데이터그램 분석"""
+        payload = bytes(packet.payload)
         
         return {
-            'ports': {
-                'source': {
-                    'number': packet.sport,
-                    'service': well_known_ports.get(packet.sport, 'Unknown')
-                },
-                'destination': {
-                    'number': packet.dport,
-                    'service': well_known_ports.get(packet.dport, 'Unknown')
-                }
-            },
             'datagram': {
-                'length': len(packet),
-                'checksum': packet.chksum,
-                'payload_size': len(packet.payload),
-                'header_size': 8  # UDP 헤더는 항상 8바이트
+                'total_length': len(packet),
+                'header': {
+                    'size': 8,  # UDP 헤더는 항상 8바이트
+                    'checksum': packet.chksum,
+                    'checksum_status': 'Valid' if packet.chksum == 0 or len(payload) > 0 else 'Invalid'
+                },
+                'payload': {
+                    'size': len(payload),
+                    'fragmented': len(payload) > 1472,  # MTU(1500) - IP헤더(20) - UDP헤더(8)
+                    'empty': len(payload) == 0
+                },
+                'statistics': {
+                    'overhead_ratio': (8 / len(packet)) * 100 if len(packet) > 0 else 0,
+                    'efficiency': (len(payload) / len(packet)) * 100 if len(packet) > 0 else 0
+                }
             }
         }
