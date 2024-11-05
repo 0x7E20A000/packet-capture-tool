@@ -3,12 +3,14 @@ from datetime import datetime
 from typing import Dict, Optional, Any, Tuple
 from colorama import Fore, Style
 from .tcp_session import TCPSessionTracker
+from .packet_statistics import PacketCounter
 
 class PacketAnalyzer:
     """패킷 분석 클래스"""
     
     def __init__(self):
         self.tcp_tracker = TCPSessionTracker()
+        self.packet_counter = PacketCounter()
     
     @staticmethod
     def parse_ip_header(packet: IP) -> Dict[str, Any]:
@@ -81,33 +83,39 @@ class PacketAnalyzer:
             'is_well_known_port': packet.sport in well_known_ports or packet.dport in well_known_ports
         }
     
-    @staticmethod
-    def analyze_packet(packet: IP, timestamp: datetime) -> Dict[str, Any]:
+    def analyze_packet(self, packet: IP, timestamp: datetime) -> Dict[str, Any]:
+        """패킷 분석"""
         analysis = {
-            'timestamp': PacketAnalyzer.format_timestamp(timestamp),
-            'ip_header': PacketAnalyzer.parse_ip_header(packet),
-            'protocol': PacketAnalyzer.identify_protocol(packet),
-            'size': PacketAnalyzer.calculate_packet_size(packet)
+            'timestamp': self.format_timestamp(timestamp),
+            'ip_header': self.parse_ip_header(packet),
+            'protocol': self.identify_protocol(packet),
+            'size': self.calculate_packet_size(packet)
         }
+        
+        # 패킷 카운터 업데이트
+        self.packet_counter.increment(
+            protocol=analysis['protocol'],
+            size=analysis['size']['total_size']
+        )
         
         if TCP in packet:
             tcp_packet = packet[TCP]
             analysis['tcp'] = {
-                'ports': PacketAnalyzer.analyze_tcp_ports(tcp_packet),
-                'flags': PacketAnalyzer.analyze_tcp_flags(tcp_packet),
-                'session': PacketAnalyzer.analyze_tcp_session(
+                'ports': self.analyze_tcp_ports(tcp_packet),
+                'flags': self.analyze_tcp_flags(tcp_packet),
+                'session': self.analyze_tcp_session(
                     tcp_packet, 
                     packet[IP].src, 
                     packet[IP].dst
                 )
             }
         elif UDP in packet:
-            analysis['udp'] = PacketAnalyzer.analyze_udp_packet(packet[UDP])
+            analysis['udp'] = self.analyze_udp_packet(packet[UDP])
         elif ICMP in packet:
             icmp_packet = packet[ICMP]
             analysis['icmp'] = {
-                'type_info': PacketAnalyzer.analyze_icmp_type(icmp_packet),
-                'classification': PacketAnalyzer.classify_icmp_message(icmp_packet)
+                'type_info': self.analyze_icmp_type(icmp_packet),
+                'classification': self.classify_icmp_message(icmp_packet)
             }
         
         return analysis
