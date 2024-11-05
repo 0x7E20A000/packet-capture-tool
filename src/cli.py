@@ -16,6 +16,7 @@ def create_parser() -> argparse.ArgumentParser:
             사용 예시:
               %(prog)s -i eth0            # eth0 인터페이스에서 패킷 캡처
               %(prog)s -i eth0 -c 100     # 100개 패킷만 캡처
+              %(prog)s -i eth0 -t 60      # 60초 동안 캡처
               %(prog)s -l                 # 사용 가능한 인터페이스 목록 표시
               
             단축키:
@@ -31,6 +32,8 @@ def create_parser() -> argparse.ArgumentParser:
                       help='사용 가능한 네트워크 인터페이스 목록 표시')
     parser.add_argument('-v', '--verbose', action='store_true',
                       help='상세 출력 모드')
+    parser.add_argument('-t', '--time', type=int, default=0,
+                      help='캡처 지속 시간 (초) (기본값: 무제한)')
     
     return parser
 

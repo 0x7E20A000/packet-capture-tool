@@ -19,7 +19,8 @@ def main():
     try:
         capture.start_capture(
             interface=args.interface,
-            packet_count=args.count
+            packet_count=args.count,
+            duration=args.time
         )
         
         print("\n사용 가능한 명령어:")
@@ -30,7 +31,7 @@ def main():
         print("  h: 도움말 표시")
         print("  q: 프로그램 종료")
         
-        while True:
+        while capture.is_capturing:
             cmd = input().lower().strip()
             if cmd == 's':
                 capture.stop_capture()
