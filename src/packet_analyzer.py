@@ -104,7 +104,11 @@ class PacketAnalyzer:
         elif UDP in packet:
             analysis['udp'] = PacketAnalyzer.analyze_udp_packet(packet[UDP])
         elif ICMP in packet:
-            analysis['icmp'] = PacketAnalyzer.analyze_icmp_type(packet[ICMP])
+            icmp_packet = packet[ICMP]
+            analysis['icmp'] = {
+                'type_info': PacketAnalyzer.analyze_icmp_type(icmp_packet),
+                'classification': PacketAnalyzer.classify_icmp_message(icmp_packet)
+            }
         
         return analysis
     
@@ -260,3 +264,62 @@ class PacketAnalyzer:
                 'code_hex': hex(icmp_code)
             }
         }
+    
+    @staticmethod
+    def classify_icmp_message(packet: ICMP) -> Dict[str, Any]:
+        """ICMP 메시지 분류 및 상세 분석"""
+        message_categories = {
+            'error': [3, 4, 5, 11, 12],  # Destination Unreachable, Source Quench, Redirect, Time Exceeded, Parameter Problem
+            'query': [8, 13, 15, 17],    # Echo Request, Timestamp Request, Information Request, Address Mask Request
+            'reply': [0, 14, 16, 18],    # Echo Reply, Timestamp Reply, Information Reply, Address Mask Reply
+            'info': [9, 10]              # Router Advertisement, Router Solicitation
+        }
+        
+        icmp_type = packet.type
+        category = next(
+            (cat for cat, types in message_categories.items() if icmp_type in types),
+            'unknown'
+        )
+        
+        analysis = {
+            'category': category,
+            'purpose': {
+                'error_reporting': category == 'error',
+                'network_discovery': category in ['query', 'reply'],
+                'routing_control': icmp_type in [9, 10]
+            },
+            'characteristics': {
+                'requires_reply': category == 'query',
+                'is_reply': category == 'reply',
+                'is_error': category == 'error'
+            }
+        }
+        
+        # 에러 메시지의 경우 추가 정보 제공
+        if category == 'error':
+            analysis['error_details'] = {
+                'recoverable': icmp_type not in [3, 11],  # Destination Unreachable, Time Exceeded는 복구 불가
+                'severity': 'high' if icmp_type in [3, 11] else 'medium',
+                'suggested_action': PacketAnalyzer._get_error_action(icmp_type, packet.code)
+            }
+        
+        return analysis
+    
+    @staticmethod
+    def _get_error_action(icmp_type: int, icmp_code: int) -> str:
+        """ICMP 에러에 대한 권장 조치 반환"""
+        error_actions = {
+            3: {  # Destination Unreachable
+                0: "네트워크 연결 상태 확인",
+                1: "대상 호스트 상태 확인",
+                2: "프로토콜 지원 여부 확인",
+                3: "포트 열림 여부 확인",
+                4: "MTU 크기 조정 필요"
+            },
+            11: {  # Time Exceeded
+                0: "라우팅 경로 최적화 필요",
+                1: "패킷 분할 설정 확인"
+            }
+        }
+        
+        return error_actions.get(icmp_type, {}).get(icmp_code, "네트워크 관리자에게 문의")
