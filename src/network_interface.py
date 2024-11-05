@@ -1,5 +1,4 @@
 from scapy.arch import get_if_list, get_if_addr, get_if_hwaddr
-from scapy.arch.windows import IFACES
 import platform
 import psutil
 from typing import Dict, List

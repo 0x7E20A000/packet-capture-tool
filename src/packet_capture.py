@@ -25,6 +25,7 @@ class PacketCapture:
         self.last_update_time: float = time.time()
         self.packets_per_second: float = 0
         self.bytes_per_second: float = 0
+        self.analyzer = PacketAnalyzer()  # PacketAnalyzer 인스턴스 추가
         self.setup_logging()
     
     def setup_logging(self) -> None:
@@ -44,7 +45,7 @@ class PacketCapture:
                 self.bytes_received += packet_size
                 
                 current_time = datetime.now()
-                analysis = PacketAnalyzer.analyze_packet(packet, current_time)
+                analysis = self.analyzer.analyze_packet(packet, current_time)  # 인스턴스 메서드로 호출
                 
                 packet_info = {
                     'timestamp': current_time,

@@ -3,7 +3,12 @@ from datetime import datetime
 from typing import Dict, Optional, Any, Tuple
 from colorama import Fore, Style
 from .tcp_session import TCPSessionTracker
-from .packet_statistics import PacketCounter, PacketRateMonitor, BandwidthMonitor
+from .packet_statistics import (
+    PacketCounter, 
+    PacketRateMonitor, 
+    BandwidthMonitor,
+    ProtocolDistribution
+)
 
 class PacketAnalyzer:
     """패킷 분석 클래스"""
@@ -118,7 +123,9 @@ class PacketAnalyzer:
             udp_packet = packet[UDP]
             src_port = udp_packet.sport
             dst_port = udp_packet.dport
-            analysis['udp'] = self.analyze_udp_packet(udp_packet)
+            analysis['udp'] = {
+                'ports': self.analyze_udp_ports(udp_packet)
+            }
         elif ICMP in packet:
             analysis['icmp'] = {
                 'type_info': self.analyze_icmp_type(packet[ICMP]),
@@ -351,3 +358,10 @@ class PacketAnalyzer:
         }
         
         return error_actions.get(icmp_type, {}).get(icmp_code, "네트워크 관리자에게 문의")
+    
+    def analyze_udp_ports(self, packet: UDP) -> Dict[str, int]:
+        """UDP 포트 정보 분석"""
+        return {
+            'src_port': packet.sport,
+            'dst_port': packet.dport
+        }

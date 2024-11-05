@@ -1,5 +1,5 @@
 from src.packet_capture import PacketCapture
-from src.cli import create_parser, validate_args
+from src.cli import create_parser, validate_interface
 import sys
 from colorama import Fore, Style
 
@@ -7,7 +7,7 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
     
-    if not validate_args(args):
+    if not validate_interface(args.interface):
         sys.exit(0)
     
     capture = PacketCapture()
@@ -17,7 +17,8 @@ def main():
             packet_count=args.count
         )
         
-        # 사용자 입력으로 캡처 제어
+        print(f"\n{Fore.CYAN}명령어 도움말 보기: 'h' 입력{Style.RESET_ALL}")
+        
         while True:
             cmd = input().lower()
             if cmd == 's':

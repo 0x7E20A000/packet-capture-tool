@@ -1,6 +1,5 @@
 import argparse
-from typing import Namespace
-import sys
+import textwrap
 from colorama import init, Fore, Style
 from .network_interface import NetworkInterfaceManager
 
