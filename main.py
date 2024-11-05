@@ -7,6 +7,11 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
     
+    if args.list_interfaces:
+        from src.network_interface import NetworkInterfaceManager
+        NetworkInterfaceManager.print_interface_list()
+        sys.exit(0)
+    
     if not validate_interface(args.interface):
         sys.exit(0)
     
