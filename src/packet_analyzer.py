@@ -1,6 +1,6 @@
 from scapy.all import IP, TCP, UDP, ICMP
 from datetime import datetime
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Tuple
 from colorama import Fore, Style
 
 class PacketAnalyzer:
@@ -57,14 +57,41 @@ class PacketAnalyzer:
         }
     
     @staticmethod
+    def analyze_tcp_ports(packet: TCP) -> Dict[str, Any]:
+        """TCP 포트 정보 분석"""
+        well_known_ports = {
+            20: 'FTP-DATA', 21: 'FTP', 22: 'SSH', 23: 'TELNET',
+            25: 'SMTP', 53: 'DNS', 80: 'HTTP', 443: 'HTTPS',
+            3306: 'MySQL', 5432: 'PostgreSQL'
+        }
+        
+        return {
+            'source_port': {
+                'number': packet.sport,
+                'service': well_known_ports.get(packet.sport, 'Unknown')
+            },
+            'dest_port': {
+                'number': packet.dport,
+                'service': well_known_ports.get(packet.dport, 'Unknown')
+            },
+            'is_well_known_port': packet.sport in well_known_ports or packet.dport in well_known_ports
+        }
+    
+    @staticmethod
     def analyze_packet(packet: IP, timestamp: datetime) -> Dict[str, Any]:
         """패킷 전체 분석"""
-        return {
+        analysis = {
             'timestamp': PacketAnalyzer.format_timestamp(timestamp),
             'ip_header': PacketAnalyzer.parse_ip_header(packet),
             'protocol': PacketAnalyzer.identify_protocol(packet),
             'size': PacketAnalyzer.calculate_packet_size(packet)
         }
+        
+        # TCP 포트 정보 추가
+        if TCP in packet:
+            analysis['tcp_ports'] = PacketAnalyzer.analyze_tcp_ports(packet[TCP])
+        
+        return analysis
     
     @staticmethod
     def print_packet_analysis(analysis: Dict[str, Any]) -> None:
