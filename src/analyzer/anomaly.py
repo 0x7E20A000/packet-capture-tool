@@ -1,8 +1,7 @@
 from typing import List, Dict, Tuple
-import numpy as np
 from datetime import datetime, timedelta
 from collections import defaultdict
-from scipy import stats
+import statistics
 
 class AnomalyDetector:
     """트래픽 이상 징후 탐지 클래스"""
@@ -37,8 +36,8 @@ class AnomalyDetector:
         """기준 통계 계산"""
         # 시간당 패킷 수 기준
         packets_per_window = self._get_packets_per_window(packets)
-        self.baseline['mean_packets'] = np.mean(packets_per_window)
-        self.baseline['std_packets'] = np.std(packets_per_window)
+        self.baseline['mean_packets'] = statistics.mean(packets_per_window)
+        self.baseline['std_packets'] = statistics.stdev(packets_per_window) if len(packets_per_window) > 1 else 0
         
         # 프로토콜 분포 기준
         protocol_counts = defaultdict(int)
