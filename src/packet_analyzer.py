@@ -79,7 +79,6 @@ class PacketAnalyzer:
     
     @staticmethod
     def analyze_packet(packet: IP, timestamp: datetime) -> Dict[str, Any]:
-        """패킷 전체 분석"""
         analysis = {
             'timestamp': PacketAnalyzer.format_timestamp(timestamp),
             'ip_header': PacketAnalyzer.parse_ip_header(packet),
@@ -87,9 +86,11 @@ class PacketAnalyzer:
             'size': PacketAnalyzer.calculate_packet_size(packet)
         }
         
-        # TCP 포트 정보 추가
         if TCP in packet:
-            analysis['tcp_ports'] = PacketAnalyzer.analyze_tcp_ports(packet[TCP])
+            analysis['tcp'] = {
+                'ports': PacketAnalyzer.analyze_tcp_ports(packet[TCP]),
+                'flags': PacketAnalyzer.analyze_tcp_flags(packet[TCP])
+            }
         
         return analysis
     
@@ -103,3 +104,54 @@ class PacketAnalyzer:
         print(f"목적지 IP: {analysis['ip_header']['dst']}")
         print(f"전체 크기: {analysis['size']['total_size']} bytes")
         print(f"TTL: {analysis['ip_header']['ttl']}") 
+    
+    @staticmethod
+    def analyze_tcp_flags(packet: TCP) -> Dict[str, Any]:
+        """TCP 플래그 분석"""
+        # TCP 플래그 정의
+        flags = {
+            'F': ('FIN', 'Connection Finish'),
+            'S': ('SYN', 'Synchronize'),
+            'R': ('RST', 'Reset'),
+            'P': ('PSH', 'Push'),
+            'A': ('ACK', 'Acknowledgement'),
+            'U': ('URG', 'Urgent'),
+            'E': ('ECE', 'ECN Echo'),
+            'C': ('CWR', 'Congestion Window Reduced')
+        }
+        
+        # 활성화된 플래그 분석
+        active_flags = []
+        flag_str = packet.sprintf('%TCP.flags%')
+        for flag_char, (name, desc) in flags.items():
+            if flag_char in flag_str:
+                active_flags.append({
+                    'name': name,
+                    'description': desc,
+                    'value': True
+                })
+        
+        # 연결 상태 분석
+        connection_state = PacketAnalyzer._analyze_tcp_state(flag_str)
+        
+        return {
+            'active_flags': active_flags,
+            'connection_state': connection_state,
+            'raw_flags': flag_str
+        }
+    
+    @staticmethod
+    def _analyze_tcp_state(flag_str: str) -> str:
+        """TCP 연결 상태 분석"""
+        if 'S' in flag_str and not 'A' in flag_str:
+            return 'Connection Initiation'
+        elif 'S' in flag_str and 'A' in flag_str:
+            return 'Connection Establishment'
+        elif 'F' in flag_str:
+            return 'Connection Termination'
+        elif 'R' in flag_str:
+            return 'Connection Reset'
+        elif 'A' in flag_str:
+            return 'Data Transfer'
+        else:
+            return 'Unknown State'
