@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Dict, Optional, Any, Tuple
 from colorama import Fore, Style
 from .tcp_session import TCPSessionTracker
-from .packet_statistics import PacketCounter
+from .packet_statistics import PacketCounter, PacketRateMonitor
 
 class PacketAnalyzer:
     """패킷 분석 클래스"""
@@ -11,6 +11,8 @@ class PacketAnalyzer:
     def __init__(self):
         self.tcp_tracker = TCPSessionTracker()
         self.packet_counter = PacketCounter()
+        self.protocol_distribution = ProtocolDistribution()
+        self.rate_monitor = PacketRateMonitor()
     
     @staticmethod
     def parse_ip_header(packet: IP) -> Dict[str, Any]:
@@ -128,6 +130,9 @@ class PacketAnalyzer:
             src_port=src_port,
             dst_port=dst_port
         )
+        
+        # 패킷 레이트 업데이트
+        self.rate_monitor.update(analysis['size']['total_size'])
         
         return analysis
     

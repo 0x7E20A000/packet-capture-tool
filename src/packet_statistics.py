@@ -1,6 +1,8 @@
-from typing import Dict, List
+from typing import Dict, List, Any
 from datetime import datetime
 import threading
+from collections import deque
+from time import time
 
 class PacketCounter:
     """실시간 패킷 카운터"""
@@ -151,3 +153,63 @@ class ProtocolDistribution:
             {'port': port, 'count': count} 
             for port, count in sorted_ports
         ]
+
+class PacketRateMonitor:
+    """초당 패킷 수 모니터링"""
+    
+    def __init__(self, window_size: int = 60):
+        self._lock = threading.Lock()
+        self.window_size = window_size  # 모니터링 윈도우 크기(초)
+        self.reset_monitor()
+    
+    def reset_monitor(self) -> None:
+        """모니터링 데이터 초기화"""
+        self._packet_times = deque(maxlen=self.window_size)
+        self._byte_counts = deque(maxlen=self.window_size)
+        self._last_update = time()
+        self._current_second = int(self._last_update)
+        self._current_count = 0
+        self._current_bytes = 0
+    
+    def update(self, packet_size: int) -> None:
+        """패킷 발생 시 업데이트"""
+        with self._lock:
+            current_time = time()
+            current_second = int(current_time)
+            
+            # 새로운 초가 시작되면 이전 데이터 저장
+            if current_second > self._current_second:
+                self._packet_times.append(self._current_count)
+                self._byte_counts.append(self._current_bytes)
+                self._current_count = 0
+                self._current_bytes = 0
+                self._current_second = current_second
+            
+            self._current_count += 1
+            self._current_bytes += packet_size
+            self._last_update = current_time
+    
+    def get_rates(self) -> Dict[str, Any]:
+        """현재 패킷 레이트 통계 반환"""
+        with self._lock:
+            if not self._packet_times:
+                return {
+                    'current_pps': self._current_count,
+                    'average_pps': self._current_count,
+                    'peak_pps': self._current_count,
+                    'current_bps': self._current_bytes * 8,
+                    'average_bps': self._current_bytes * 8,
+                    'peak_bps': self._current_bytes * 8
+                }
+            
+            packet_rates = list(self._packet_times)
+            byte_rates = list(self._byte_counts)
+            
+            return {
+                'current_pps': self._current_count,
+                'average_pps': sum(packet_rates) / len(packet_rates),
+                'peak_pps': max(packet_rates + [self._current_count]),
+                'current_bps': self._current_bytes * 8,
+                'average_bps': (sum(byte_rates) / len(byte_rates)) * 8,
+                'peak_bps': max(byte_rates + [self._current_bytes]) * 8
+            }
