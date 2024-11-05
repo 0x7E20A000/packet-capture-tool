@@ -111,7 +111,7 @@ report = report_gen.generate_report(packets)
 pdf_path = report_gen.generate_pdf_report(report)
 print(f"PDF 보고서가 생성되었습니다: {pdf_path}")
 ```
-
+```
 # 인터페이스 목록 확인
 python main.py -l
 
@@ -135,4 +135,4 @@ tail -f logs/packet_capture_*.log
 
 # 캡처 시간 제한 테스트
 python main.py -i en0 -c 100 -t 30
-
+```
