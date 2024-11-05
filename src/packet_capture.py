@@ -88,29 +88,38 @@ class PacketCapture:
     
     def show_status(self) -> None:
         """실시간 상태 표시"""
-        elapsed = self.get_elapsed_time()
+        # 화면 지우기
+        print("\033[H\033[J")  # 화면 클리어
         
-        # 기본 상태 정보
-        status = (
-            f"\r{Fore.CYAN}패킷: {self.packet_count:,} | "
-            f"속도: {self.packets_per_second:.1f} pps | "
-            f"대역폭: {self.format_bytes(self.bytes_per_second)}/s{Style.RESET_ALL}"
-        )
+        # 기본 통계 정보
+        print(f"{Fore.CYAN}=== 패킷 캡처 상태 ==={Style.RESET_ALL}")
+        print(f"총 패킷 수: {self.packet_count:,}")
+        print(f"초당 패킷: {self.packets_per_second:.1f} pps")
+        print(f"대역폭: {self.format_bytes(self.bytes_per_second)}/s")
         
-        # 진행률 정보
-        if self.max_packets > 0:
-            progress = (self.packet_count / self.max_packets) * 100
-            status += f" | {Fore.YELLOW}진행률: {progress:.1f}%{Style.RESET_ALL}"
-        
-        # 시간 정보
-        if self.duration > 0:
-            time_progress = (elapsed / self.duration) * 100
-            status += (
-                f" | {Fore.GREEN}시간: {elapsed:.1f}/{self.duration}초"
-                f" ({time_progress:.1f}%){Style.RESET_ALL}"
+        # 최근 캡처된 패킷 정보 (최대 10개)
+        print(f"\n{Fore.YELLOW}최근 캡처된 패킷:{Style.RESET_ALL}")
+        for packet in self.packets[-10:]:
+            print(
+                f"[{packet['timestamp'].strftime('%H:%M:%S.%f')[:-3]}] "
+                f"{packet['source_ip']} → {packet['dest_ip']} "
+                f"({packet['protocol']}, {self.format_bytes(packet['size'])})"
             )
+            
+            # 프로토콜별 상세 정보
+            analysis = packet['analysis']
+            if 'tcp' in analysis:
+                tcp_info = analysis['tcp']
+                print(f"  TCP - Port: {tcp_info['ports']['src_port']} → {tcp_info['ports']['dst_port']}, "
+                      f"Flags: {tcp_info['flags']}")
+            elif 'udp' in analysis:
+                udp_info = analysis['udp']
+                print(f"  UDP - Port: {udp_info['ports']['src_port']} → {udp_info['ports']['dst_port']}")
+            elif 'icmp' in analysis:
+                icmp_info = analysis['icmp']
+                print(f"  ICMP - Type: {icmp_info['type']}, Code: {icmp_info['code']}")
         
-        print(status, end='')
+        print(f"\n{Fore.GREEN}Press 'Ctrl+C' to stop capturing{Style.RESET_ALL}")
     
     def start_capture(self, 
                      interface: Optional[str] = None, 
@@ -192,7 +201,7 @@ class PacketCapture:
             time.sleep(0.1)
     
     def get_elapsed_time(self) -> float:
-        """경과 시간 반환 (초)"""
+        """캡처 시작부터 경과된 시간(초) 반환"""
         if not self.start_time:
             return 0.0
         return (datetime.now() - self.start_time).total_seconds()
