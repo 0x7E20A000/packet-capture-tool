@@ -100,6 +100,8 @@ class PacketAnalyzer:
         
         if TCP in packet:
             tcp_packet = packet[TCP]
+            src_port = tcp_packet.sport
+            dst_port = tcp_packet.dport
             analysis['tcp'] = {
                 'ports': self.analyze_tcp_ports(tcp_packet),
                 'flags': self.analyze_tcp_flags(tcp_packet),
@@ -110,13 +112,22 @@ class PacketAnalyzer:
                 )
             }
         elif UDP in packet:
-            analysis['udp'] = self.analyze_udp_packet(packet[UDP])
+            udp_packet = packet[UDP]
+            src_port = udp_packet.sport
+            dst_port = udp_packet.dport
+            analysis['udp'] = self.analyze_udp_packet(udp_packet)
         elif ICMP in packet:
-            icmp_packet = packet[ICMP]
             analysis['icmp'] = {
-                'type_info': self.analyze_icmp_type(icmp_packet),
-                'classification': self.classify_icmp_message(icmp_packet)
+                'type_info': self.analyze_icmp_type(packet[ICMP]),
+                'classification': self.classify_icmp_message(packet[ICMP])
             }
+            
+        self.protocol_distribution.update(
+            protocol=analysis['protocol'],
+            size=analysis['size']['total_size'],
+            src_port=src_port,
+            dst_port=dst_port
+        )
         
         return analysis
     

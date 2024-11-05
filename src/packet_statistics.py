@@ -63,3 +63,91 @@ class PacketCounter:
                 'hourly_distribution': self._hourly_counts.copy(),
                 'last_update': self._last_update.isoformat()
             } 
+
+class ProtocolDistribution:
+    """프로토콜 분포 분석"""
+    
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.reset_distribution()
+    
+    def reset_distribution(self) -> None:
+        """분포 데이터 초기화"""
+        self._protocol_counts = {
+            'tcp': {'count': 0, 'bytes': 0},
+            'udp': {'count': 0, 'bytes': 0},
+            'icmp': {'count': 0, 'bytes': 0},
+            'other': {'count': 0, 'bytes': 0}
+        }
+        
+        self._tcp_ports = {}
+        self._udp_ports = {}
+        self._total_packets = 0
+        self._total_bytes = 0
+    
+    def update(self, protocol: str, size: int, src_port: int = None, 
+              dst_port: int = None) -> None:
+        """프로토콜 분포 업데이트"""
+        with self._lock:
+            protocol = protocol.lower()
+            
+            # 기본 카운트 업데이트
+            if protocol in self._protocol_counts:
+                self._protocol_counts[protocol]['count'] += 1
+                self._protocol_counts[protocol]['bytes'] += size
+            else:
+                self._protocol_counts['other']['count'] += 1
+                self._protocol_counts['other']['bytes'] += size
+            
+            # 포트 정보 업데이트
+            if protocol == 'tcp' and (src_port or dst_port):
+                self._update_port_stats(self._tcp_ports, src_port, dst_port)
+            elif protocol == 'udp' and (src_port or dst_port):
+                self._update_port_stats(self._udp_ports, src_port, dst_port)
+            
+            self._total_packets += 1
+            self._total_bytes += size
+    
+    def _update_port_stats(self, port_dict: Dict, src_port: int, 
+                          dst_port: int) -> None:
+        """포트 통계 업데이트"""
+        for port in [src_port, dst_port]:
+            if port:
+                port_dict[port] = port_dict.get(port, 0) + 1
+    
+    def get_distribution(self) -> Dict:
+        """현재 분포 통계 반환"""
+        with self._lock:
+            stats = {
+                'protocols': {
+                    proto: {
+                        'count': data['count'],
+                        'bytes': data['bytes'],
+                        'percentage': (data['count'] / self._total_packets * 100) 
+                            if self._total_packets > 0 else 0
+                    }
+                    for proto, data in self._protocol_counts.items()
+                },
+                'total': {
+                    'packets': self._total_packets,
+                    'bytes': self._total_bytes
+                },
+                'top_ports': {
+                    'tcp': self._get_top_ports(self._tcp_ports),
+                    'udp': self._get_top_ports(self._udp_ports)
+                }
+            }
+            return stats
+    
+    def _get_top_ports(self, port_dict: Dict, limit: int = 5) -> List[Dict]:
+        """가장 많이 사용된 포트 반환"""
+        sorted_ports = sorted(
+            port_dict.items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        )[:limit]
+        
+        return [
+            {'port': port, 'count': count} 
+            for port, count in sorted_ports
+        ]
