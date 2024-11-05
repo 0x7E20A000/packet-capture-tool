@@ -6,6 +6,7 @@ from colorama import init, Fore, Style
 import threading
 import time
 from .packet_analyzer import PacketAnalyzer
+from .logger import PacketLogger
 
 # 컬러 출력 초기화
 init()
@@ -26,15 +27,7 @@ class PacketCapture:
         self.packets_per_second: float = 0
         self.bytes_per_second: float = 0
         self.analyzer = PacketAnalyzer()  # PacketAnalyzer 인스턴스 추가
-        self.setup_logging()
-    
-    def setup_logging(self) -> None:
-        """로깅 설정"""
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s'
-        )
-        self.logger = logging.getLogger(__name__)
+        self.logger = PacketLogger()
     
     def packet_callback(self, packet) -> None:
         """패킷 캡처 콜백"""
@@ -63,8 +56,10 @@ class PacketCapture:
                 # 상태 표시줄 업데이트
                 self.show_status()
                 
+                self.logger.log_packet(packet_info)
+                
             except Exception as e:
-                self.logger.error(f"패킷 처리 중 오류 발생: {e}")
+                self.logger.logger.error(f"패킷 처리 중 오류 발생: {e}")
     
     def update_statistics(self, packet_size: int) -> None:
         """실시간 통계 업데이트"""
@@ -124,7 +119,7 @@ class PacketCapture:
                     print(f"  ICMP - Type: {icmp.get('type', '?')}, Code: {icmp.get('code', '?')}")
                 
             except Exception as e:
-                self.logger.debug(f"패킷 정보 표시 중 오류: {e}")
+                self.logger.logger.debug(f"패킷 정보 표시 중 오류: {e}")
                 continue
         
         print(f"\n{Fore.GREEN}Press 'Ctrl+C' to stop capturing{Style.RESET_ALL}")
@@ -149,6 +144,8 @@ class PacketCapture:
         self.packet_count = 0
         self.start_time = datetime.now()
         self.is_capturing = True
+        
+        self.logger.start_logging()
         
         self.logger.info(
             f"캡처 시작 - 인터페이스: {interface or '기본'}, "
@@ -183,6 +180,7 @@ class PacketCapture:
             self.capture_thread.join()
             print(f"\n{Fore.YELLOW}캡처가 중지되었습니다.{Style.RESET_ALL}")
             self.show_capture_summary()
+        self.logger.stop_logging()
     
     def _capture_packets(self, interface: Optional[str], packet_count: int) -> None:
         """실제 패킷 캡처를 수행하는 내부 메서드"""
@@ -195,7 +193,7 @@ class PacketCapture:
                 stop_filter=lambda _: not self.is_capturing
             )
         except Exception as e:
-            self.logger.error(f"캡처 중 오류 발생: {e}")
+            self.logger.logger.error(f"캡처 중 오류 발생: {e}")
             self.is_capturing = False
     
     def _duration_timer(self) -> None:
