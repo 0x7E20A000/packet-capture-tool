@@ -2,6 +2,7 @@ import argparse
 import textwrap
 from colorama import init, Fore, Style
 from .network_interface import NetworkInterfaceManager
+from .version import VERSION, VERSION_INFO
 
 # 컬러 출력 초기화
 init()
@@ -49,3 +50,11 @@ def validate_interface(interface: str) -> bool:
         print(f"{Fore.YELLOW}경고: '{interface}' 인터페이스가 비활성 상태입니다.{Style.RESET_ALL}")
     
     return True
+
+def show_version():
+    """버전 정보 표시"""
+    print(f"\n{Fore.CYAN}Network Packet Capture v{VERSION}{Style.RESET_ALL}")
+    print(f"설명: {VERSION_INFO['description']}")
+    print("\n주요 변경사항:")
+    for change in VERSION_INFO['changes']:
+        print(f"• {change}")

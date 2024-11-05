@@ -85,52 +85,41 @@ class PacketCapture:
     
     def show_status(self) -> None:
         """실시간 상태 표시"""
-        # 화면 지우기
-        print("\033[H\033[J")
+        print("\033[H", end='')  # 커서를 화면 맨 위로
         
-        # 상단 헤더
-        print(f"{Fore.CYAN}{'=' * 80}")
-        print(f"  네트워크 패킷 캡처 모니터링")
-        print(f"{'=' * 80}{Style.RESET_ALL}")
+        # 타이틀
+        print(f"{Fore.CYAN}네트워크 패킷 캡처 모니터링{Style.RESET_ALL}")
+        print("─" * 80)
         
-        # 좌측: 기본 통계
+        # 기본 통계 (한 줄에 표시)
         stats = [
-            f"총 패킷 수: {self.packet_count:,}",
-            f"초당 패킷: {self.packets_per_second:.1f} pps",
-            f"대역폭: {self.format_bytes(self.bytes_per_second)}/s",
-            f"경과 시간: {int(self.get_elapsed_time())}초"
+            f"패킷: {self.packet_count:,}",
+            f"PPS: {self.packets_per_second:.1f}",
+            f"BPS: {self.format_bytes(self.bytes_per_second)}/s",
+            f"시간: {int(self.get_elapsed_time())}초"
         ]
+        print(" | ".join(f"{stat}" for stat in stats))
+        print("─" * 80)
         
-        # 우측: 프로토콜 분포
-        protocol_stats = self._get_protocol_distribution()
+        # 패킷 목록 헤더
+        headers = ["시간", "출발지", "목적지", "프로토콜", "크기"]
+        print(f"{headers[0]:<12} {headers[1]:<22} {headers[2]:<22} {headers[3]:<8} {headers[4]:<10}")
+        print("─" * 80)
         
-        # 통계 및 프로토콜 분포 출력
-        for i in range(max(len(stats), len(protocol_stats))):
-            left = stats[i] if i < len(stats) else ""
-            right = protocol_stats[i] if i < len(protocol_stats) else ""
-            print(f"{left:<40} {right}")
-        
-        # 최근 패킷 테이블 헤더
-        print(f"\n{Fore.YELLOW}최근 캡처된 패킷:{Style.RESET_ALL}")
-        print(f"{'─' * 85}")
-        headers = ['시간', '출발지', '목적지', '프로토콜', '크기']
-        print(f"{headers[0]:^12} │ {headers[1]:^25} │ {headers[2]:^25} │ {headers[3]:^8} │ {headers[4]:>8}")
-        print(f"{'─' * 85}")
-        
-        # 최근 패킷 목록
-        for packet in self.packets[-5:]:  # 최근 5개 패킷만 표시
+        # 최근 패킷 목록 (스크롤 영역)
+        for packet in self.packets[-15:]:  # 최근 15개 패킷 표시
             try:
-                timestamp = packet['timestamp'].strftime('%H:%M:%S.%f')[:-3]
-                print(
-                    f"{timestamp:^12} │ "
-                    f"{packet['source_ip']:^25} │ "
-                    f"{packet['dest_ip']:^25} │ "
-                    f"{packet['protocol']:^8} │ "
-                    f"{self.format_bytes(packet['size']):>8}"
-                )
+                ts = packet['timestamp'].strftime('%H:%M:%S.%f')[:-3]
+                src = packet['source_ip'][:20] + '...' if len(packet['source_ip']) > 20 else packet['source_ip']
+                dst = packet['dest_ip'][:20] + '...' if len(packet['dest_ip']) > 20 else packet['dest_ip']
+                proto = packet['protocol']
+                size = f"{packet['size']} bytes"
+                print(f"{ts:<12} {src:<22} {dst:<22} {proto:<8} {size:<10}")
             except Exception as e:
                 self.logger.logger.debug(f"패킷 정보 표시 중 오류: {e}")
                 continue
+        
+        print("\033[J", end='')  # 화면 나머지 부분 지우기
     
     def start_capture(self, 
                      interface: Optional[str] = None, 
