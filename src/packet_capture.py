@@ -8,6 +8,7 @@ import time
 from .packet_analyzer import PacketAnalyzer
 from .logger import PacketLogger
 from .exporter import PacketExporter
+from .analyzer.report import ReportGenerator
 
 # 컬러 출력 초기화
 init()
@@ -216,7 +217,9 @@ class PacketCapture:
     
     def export_data(self, format: str = 'csv', filters: Optional[Dict] = None) -> str:
         """캡처된 패킷 데이터 내보내기"""
-        if format.lower() == 'csv':
+        if format.lower() == 'pdf':
+            return self.export_pdf()
+        elif format.lower() == 'csv':
             return self.exporter.export_csv(self.packets, filters=filters)
         elif format.lower() == 'json':
             return self.exporter.export_json(self.packets, filters=filters)
@@ -241,4 +244,10 @@ class PacketCapture:
                 result.append(f"{proto.upper():>6}: {bar} {percentage:5.1f}% ({size_info})")
         
         return result
+    
+    def export_pdf(self) -> str:
+        """캡처된 패킷 데이터를 PDF 보고서로 내보내기"""
+        report_gen = ReportGenerator()
+        report = report_gen.generate_report(self.packets)
+        return report_gen.generate_pdf_report(report)
     
