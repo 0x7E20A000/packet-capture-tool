@@ -89,9 +89,9 @@ class PacketCapture:
         print("\033[H\033[J")
         
         # 상단 헤더
-        print(f"{Fore.CYAN}{'=' * 60}")
+        print(f"{Fore.CYAN}{'=' * 80}")
         print(f"  네트워크 패킷 캡처 모니터링")
-        print(f"{'=' * 60}{Style.RESET_ALL}")
+        print(f"{'=' * 80}{Style.RESET_ALL}")
         
         # 좌측: 기본 통계
         stats = [
@@ -108,23 +108,24 @@ class PacketCapture:
         for i in range(max(len(stats), len(protocol_stats))):
             left = stats[i] if i < len(stats) else ""
             right = protocol_stats[i] if i < len(protocol_stats) else ""
-            print(f"{left:<35} {right}")
+            print(f"{left:<40} {right}")
         
         # 최근 패킷 테이블 헤더
         print(f"\n{Fore.YELLOW}최근 캡처된 패킷:{Style.RESET_ALL}")
-        print(f"{'-' * 80}")
-        print(f"{'시간':^12} | {'출발지':^20} | {'목적지':^20} | {'프로토콜':^8} | {'크기':>8}")
-        print(f"{'-' * 80}")
+        print(f"{'─' * 85}")
+        headers = ['시간', '출발지', '목적지', '프로토콜', '크기']
+        print(f"{headers[0]:^12} │ {headers[1]:^25} │ {headers[2]:^25} │ {headers[3]:^8} │ {headers[4]:>8}")
+        print(f"{'─' * 85}")
         
         # 최근 패킷 목록
         for packet in self.packets[-5:]:  # 최근 5개 패킷만 표시
             try:
                 timestamp = packet['timestamp'].strftime('%H:%M:%S.%f')[:-3]
                 print(
-                    f"{timestamp:^12} | "
-                    f"{packet['source_ip']:^20} | "
-                    f"{packet['dest_ip']:^20} | "
-                    f"{packet['protocol']:^8} | "
+                    f"{timestamp:^12} │ "
+                    f"{packet['source_ip']:^25} │ "
+                    f"{packet['dest_ip']:^25} │ "
+                    f"{packet['protocol']:^8} │ "
                     f"{self.format_bytes(packet['size']):>8}"
                 )
             except Exception as e:
@@ -232,4 +233,23 @@ class PacketCapture:
             return self.exporter.export_json(self.packets, filters=filters)
         else:
             raise ValueError(f"지원하지 않는 형식: {format}")
+    
+    def _get_protocol_distribution(self) -> List[str]:
+        """프로토콜 분포 분석"""
+        stats = self.analyzer.protocol_distribution.get_distribution()
+        protocols = stats['protocols']
+        
+        result = [f"{Fore.CYAN}프로토콜 분포:{Style.RESET_ALL}"]
+        
+        if stats['total']['packets'] == 0:
+            return [f"{Fore.YELLOW}데이터 수집 중...{Style.RESET_ALL}"]
+        
+        for proto, data in sorted(protocols.items(), key=lambda x: x[1]['count'], reverse=True):
+            if data['count'] > 0:
+                percentage = data['percentage']
+                bar = "█" * int(percentage / 5)
+                size_info = self.format_bytes(data['bytes'])
+                result.append(f"{proto.upper():>6}: {bar} {percentage:5.1f}% ({size_info})")
+        
+        return result
     
