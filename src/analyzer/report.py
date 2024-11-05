@@ -1,7 +1,21 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union, Any
 from datetime import datetime
 import json
 from pathlib import Path
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import (
+    SimpleDocTemplate, 
+    Paragraph, 
+    Spacer, 
+    Table, 
+    TableStyle
+)
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics.charts.linecharts import HorizontalLineChart
+
 from .statistics import PacketStatistics
 from .pattern import TrafficPatternAnalyzer
 from .anomaly import AnomalyDetector

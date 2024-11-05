@@ -3,7 +3,6 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
-import pandas as pd
 
 class PacketExporter:
     """패킷 데이터 내보내기 클래스"""
