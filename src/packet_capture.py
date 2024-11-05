@@ -3,6 +3,8 @@ from datetime import datetime
 import logging
 from typing import Optional, Dict, List
 from colorama import init, Fore, Style
+import threading
+import time
 
 # 컬러 출력 초기화
 init()
@@ -14,6 +16,7 @@ class PacketCapture:
         self.packets: List[Dict] = []
         self.is_capturing: bool = False
         self.packet_count: int = 0
+        self.capture_thread: Optional[threading.Thread] = None
         self.setup_logging()
     
     def setup_logging(self) -> None:
@@ -54,26 +57,47 @@ class PacketCapture:
                      interface: Optional[str] = None, 
                      packet_count: int = 0) -> None:
         """패킷 캡처 시작"""
+        if self.is_capturing:
+            print(f"{Fore.YELLOW}경고: 이미 캡처가 진행 중입니다.{Style.RESET_ALL}")
+            return
+            
         self.is_capturing = True
-        self.logger.info(
-            f"캡처 시작 - 인터페이스: {interface or '기본'}"
-        )
+        self.logger.info(f"캡처 시작 - 인터페이스: {interface or '기본'}")
         
+        # 별도 스레드에서 캡처 실행
+        self.capture_thread = threading.Thread(
+            target=self._capture_packets,
+            args=(interface, packet_count)
+        )
+        self.capture_thread.start()
+        
+        print(f"{Fore.GREEN}패킷 캡처 시작... (종료: 's' 입력){Style.RESET_ALL}")
+    
+    def stop_capture(self) -> None:
+        """패킷 캡처 중지"""
+        if not self.is_capturing:
+            print(f"{Fore.YELLOW}경고: 실행 중인 캡처가 없습니다.{Style.RESET_ALL}")
+            return
+            
+        self.is_capturing = False
+        if self.capture_thread:
+            self.capture_thread.join()
+            print(f"\n{Fore.YELLOW}캡처가 중지되었습니다.{Style.RESET_ALL}")
+            self.show_capture_summary()
+    
+    def _capture_packets(self, interface: Optional[str], packet_count: int) -> None:
+        """실제 패킷 캡처를 수행하는 내부 메서드"""
         try:
-            print(f"{Fore.GREEN}패킷 캡처 시작... (종료: Ctrl+C){Style.RESET_ALL}")
             sniff(
                 iface=interface,
                 prn=self.packet_callback,
                 count=packet_count,
-                store=False
+                store=False,
+                stop_filter=lambda _: not self.is_capturing
             )
-        except KeyboardInterrupt:
-            print(f"\n{Fore.YELLOW}사용자에 의해 캡처 중지{Style.RESET_ALL}")
         except Exception as e:
-            print(f"{Fore.RED}캡처 중 오류 발생: {e}{Style.RESET_ALL}")
-        finally:
+            self.logger.error(f"캡처 중 오류 발생: {e}")
             self.is_capturing = False
-            self.show_capture_summary()
     
     def show_capture_summary(self) -> None:
         """캡처 요약 정보 표시"""
