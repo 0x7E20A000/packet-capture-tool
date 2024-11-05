@@ -17,18 +17,18 @@ class PacketCapture:
     
     def __init__(self):
         self.packets: List[Dict] = []
-        self.is_capturing: bool = False
-        self.packet_count: int = 0
+        self.logger = PacketLogger()
+        self.is_capturing = False
+        self.start_time = None
+        self.packet_count = 0
+        self.bytes_received = 0
         self.max_packets: int = 0
         self.capture_thread: Optional[threading.Thread] = None
-        self.start_time: Optional[datetime] = None
         self.duration: int = 0  # 캡처 지속 시간 (초)
-        self.bytes_received: int = 0
         self.last_update_time: float = time.time()
         self.packets_per_second: float = 0
         self.bytes_per_second: float = 0
         self.analyzer = PacketAnalyzer()  # PacketAnalyzer 인스턴스 추가
-        self.logger = PacketLogger()
         self.exporter = PacketExporter()
     
     def packet_callback(self, packet) -> None:
@@ -217,7 +217,7 @@ class PacketCapture:
     def show_capture_summary(self) -> None:
         """캡처 요약 정보 표시"""
         print(f"\n{Fore.CYAN}=== 캡처 요약 ==={Style.RESET_ALL}")
-        print(f"��� 캡처된 패킷: {self.packet_count}")
+        print(f" 캡처된 패킷: {self.packet_count}")
     
     def export_data(self, format: str = 'csv', filters: Optional[Dict] = None) -> str:
         """캡처된 패킷 데이터 내보내기"""

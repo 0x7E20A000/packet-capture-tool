@@ -106,3 +106,11 @@ class PacketLogger:
             self.buffer.put(packet_info, block=False)
         except Exception as e:
             self.logger.error(f"패킷 버퍼링 중 오류 발생: {e}")
+    
+    def info(self, message: str) -> None:
+        """정보 로깅"""
+        self.logger.info(message)
+        
+    def error(self, message: str) -> None:
+        """에러 로깅"""
+        self.logger.error(message)
