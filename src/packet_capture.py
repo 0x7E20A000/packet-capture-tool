@@ -86,41 +86,40 @@ class PacketCapture:
     
     def show_status(self) -> None:
         """실시간 상태 표시"""
-        print("\033[H", end='')  # 커서를 화면 맨 위로
+        print("\033[H\033[J", end='')  # 화면 초기화
         
-        # 타이틀
-        print(f"{Fore.CYAN}네트워크 패킷 캡처 모니터링{Style.RESET_ALL}")
-        print("─" * 80)
+        # 타이틀과 구분선
+        print(f"\n{Fore.CYAN}Network Packet Capture Monitoring{Style.RESET_ALL}")
+        print("─" * 75)
         
-        # 기본 통계 (한 줄에 표시)
+        # 기본 통계 (고정 너비 사용)
         stats = [
-            f"패킷: {self.packet_count:,}",
-            f"PPS: {self.packets_per_second:.1f}",
-            f"BPS: {self.format_bytes(self.bytes_per_second)}/s",
-            f"시간: {int(self.get_elapsed_time())}초"
+            f"Packets: {self.packet_count:>6,}",
+            f"PPS: {self.packets_per_second:>6.1f}",
+            f"BPS: {self.format_bytes(self.bytes_per_second):>8}/s",
+            f"Time: {int(self.get_elapsed_time()):>4}s"
         ]
-        print(" | ".join(f"{stat}" for stat in stats))
-        print("─" * 80)
+        print(" │ ".join(stats))
+        print("─" * 75)
         
-        # 패킷 목록 헤더
-        headers = ["시간", "출발지", "목적지", "프로토콜", "크기"]
-        print(f"{headers[0]:<12} {headers[1]:<22} {headers[2]:<22} {headers[3]:<8} {headers[4]:<10}")
-        print("─" * 80)
+        # 패킷 목록 테이블 헤더 (공간 최적화)
+        headers = ["Time", "Src", "Dst", "Proto", "Bytes"]
+        header_format = "{:<10} {:<20} {:<20} {:<8} {:<8}"
+        print(f"{Fore.CYAN}{header_format.format(*headers)}{Style.RESET_ALL}")
+        print("─" * 75)
         
-        # 최근 패킷 목록 (스크롤 영역)
-        for packet in self.packets[-15:]:  # 최근 15개 패킷 표시
+        # 패킷 목록 (최근 15개)
+        packet_format = "{:<10} {:<20} {:<20} {:<8} {:<8}"
+        for packet in self.packets[-15:]:
             try:
-                ts = packet['timestamp'].strftime('%H:%M:%S.%f')[:-3]
-                src = packet['source_ip'][:20] + '...' if len(packet['source_ip']) > 20 else packet['source_ip']
-                dst = packet['dest_ip'][:20] + '...' if len(packet['dest_ip']) > 20 else packet['dest_ip']
-                proto = packet['protocol']
-                size = f"{packet['size']} bytes"
-                print(f"{ts:<12} {src:<22} {dst:<22} {proto:<8} {size:<10}")
+                ts = packet['timestamp'].strftime('%H:%M:%S')
+                src = packet['source_ip'][:18] + '..' if len(packet['source_ip']) > 18 else packet['source_ip']
+                dst = packet['dest_ip'][:18] + '..' if len(packet['dest_ip']) > 18 else packet['dest_ip']
+                proto = packet['protocol'][:7]  # TCP, UDP, ICMP 등
+                size = str(packet['size'])
+                print(packet_format.format(ts, src, dst, proto, size))
             except Exception as e:
                 self.logger.logger.debug(f"패킷 정보 표시 중 오류: {e}")
-                continue
-        
-        print("\033[J", end='')  # 화면 나머지 부분 지우기
     
     def start_capture(self, 
                      interface: Optional[str] = None, 
